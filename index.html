@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Breaking HN</title>
+  <style>
+    :root{
+      --sidebar-w:240px;
+      --accent:#0077ff;
+      --bg:#0b1220;
+      --card:#0f1720;
+      --text:#eef2ff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+    /* Sidebar */
+    aside.sidebar{width:var(--sidebar-w);background:linear-gradient(180deg,#020317,#05060a);padding:18px;display:flex;flex-direction:column;gap:12px}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800}
+    nav.tabs{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+    button.tab{background:transparent;border:0;color:var(--text);padding:10px 12px;border-radius:8px;text-align:left;cursor:pointer;font-weight:700;display:flex;gap:10px;align-items:center}
+    button.tab.active{background:linear-gradient(90deg,var(--accent),#0059b3)}
+    .dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,0.12)}
+    .tab.active .dot{background:#fff}
+    .sidebar small{color:rgba(255,255,255,0.7)}
+
+    /* Main */
+    main.main{flex:1;padding:18px;overflow:auto}
+    .hero{height:200px;border-radius:12px;overflow:hidden;background-size:cover;background-position:center;margin-bottom:18px;position:relative;display:flex;align-items:center;justify-content:center}
+    .hero .overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.2),rgba(0,0,0,0.6));display:flex;flex-direction:column;justify-content:center;align-items:center;padding:18px;text-align:center}
+    .hero h1{margin:0;font-size:28px}
+    .hero p{margin:6px 0 0;color:rgba(255,255,255,0.9)}
+
+    .container{background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0.6));padding:14px;border-radius:10px}
+    .section-title{margin:0 0 8px 0;text-align:left}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:12px}
+    .card{background:var(--card);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 18px rgba(0,0,0,0.4)}
+    .card img, .card iframe, .card video{width:100%;height:160px;object-fit:cover;border-radius:8px;background:rgba(0,0,0,0.15)}
+    .card > div { text-align:center; } /* center headline/summary inside card */
+    .card h3{margin:6px 0 0 0;font-size:18px}
+    .card p{margin:6px 0 0 0;color:rgba(255,255,255,0.9)}
+    .read{align-self:center;padding:8px 12px;border-radius:8px;border:0;background:linear-gradient(90deg,var(--accent),#0059b3);color:#fff;font-weight:800;cursor:pointer;margin-top:12px}
+    .read:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(0,0,0,0.4)}
+
+    footer{margin-top:18px;color:rgba(255,255,255,0.6);font-size:13px;text-align:center}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);opacity:0;pointer-events:none;transition:opacity .18s;z-index:999}
+    .modal.open{opacity:1;pointer-events:auto}
+    .modal-box{width:94%;max-width:980px;background:linear-gradient(180deg,#07080a,#0b0d10);border-radius:12px;padding:18px;color:var(--text);position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+    .modal-box img, .modal-box iframe, .modal-box video{width:100%;height:360px;object-fit:cover;border-radius:8px;margin-bottom:12px;background:rgba(0,0,0,0.15)}
+    .modal-close{position:absolute;right:12px;top:8px;background:transparent;border:0;color:#fff;font-size:26px;cursor:pointer}
+    .modal-body{max-height:60vh;overflow:auto;padding-right:6px}
+    body.modal-open { overflow: hidden; }
+
+    /* small screens */
+    @media(max-width:900px){ 
+      .grid{grid-template-columns:1fr} 
+      .hero{height:140px} 
+      aside.sidebar{position:fixed;left:-100%;transition:left .25s} 
+      aside.sidebar.open{left:0} 
+      main.main{padding:12px 12px 60px 12px} 
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar" aria-label="Main navigation">
+    <div class="brand">
+      <div class="logo">BHN</div>
+      <div>
+        <div style="font-weight:800">Breaking HN</div>
+        <small>Informing the People</small>
+      </div>
+    </div>
+
+    <nav class="tabs" role="navigation" aria-label="Sections">
+      <button class="tab active" data-target="Home"><span class="dot"></span> Home</button>
+      <button class="tab" data-target="Football"><span class="dot"></span> Football</button>
+      <button class="tab" data-target="Technology"><span class="dot"></span> Technology</button>
+      <button class="tab" data-target="Music"><span class="dot"></span> Music</button>
+      <button class="tab" data-target="Culture"><span class="dot"></span> Culture</button>
+      <button class="tab" data-target="Politics"><span class="dot"></span> Politics</button>
+      <button class="tab" data-target="Contact"><span class="dot"></span> Contact</button>
+    </nav>
+
+    <div style="margin-top:auto;font-size:13px;color:rgba(255,255,255,0.7)">
+      <div style="margin-bottom:6px">Breaking HN</div>
+      <div style="font-size:12px">Informing the people</div>
+      <div style="margin-top:8px;text-align:center">© 2025 Breaking HN</div>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div id="hero" class="hero" style="background-image:url('imagenescerru/noticias.webp');">
+      <div class="overlay">
+      </div>
+    </div>
+
+    <div id="content">
+      <section id="Home" class="container" aria-labelledby="Home-title">
+        <h2 id="Home-title" class="section-title">Home</h2>
+        <div class="grid">
+          <article class="card">
+            <img src="imagenescerru/juli.jpg" alt="Julián Álvarez" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Julián Álvarez shines</h3>
+              <p>Atletico de Madrid thrashing</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Atletico de Madrid 5-2 Real Madrid</h4>
+              <p>Fantastic match in Spain's capital between Atletico de Madrid and Real Madrid where Cholo Simeone's team came out victorious.</p>
+              <p>Atletico scored first; Real Madrid reacted with goals from Mbappé and Arda Güler, and later Sorloth equalized.</p>
+              <p>In the second half, Julián Álvarez scored twice to put his side ahead.</p>
+              <p>Griezmann's goal at 90+3 finished off the Merengue team.</p>
+              <p>LaLiga EA Sports highlights: https://www.youtube.com/watch?v=BpHPcqiKwps</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/mon laferte.jpg" alt="Mon Laferte" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Mon Laferte announces album</h3>
+              <p>Release date and tracks</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Femme Fatale</h4>
+              <p>The Chilean singer has announced a new album to be released on October 28, titled <em>Femme Fatale</em>.</p>
+              <p>Mon Laferte has already previewed several songs that will be on the album such as "Otra Noche de Llorar", "Esto es Amor" (with Conociendo Rusia) and "La Tirana" (with Nathy Peluso). The album will feature collaborations with artists like Tiago Iorc, Natalia Lafourcade and Silvana Estrada.</p>
+              <p>There is a lot of expectation around this new release, with one of the songs already nominated for the Latin Grammy Awards.</p>
+              <p>Otra Noche de Llorar - https://www.youtube.com/watch?v=Z8DcUVribEg</p>
+              <p>Esto Es Amor - https://www.youtube.com/watch?v=f1ExcuCf7HI</p>
+              <p>La Tirana - https://www.youtube.com/watch?v=SZlMeMi-e5s</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/papi.jpg" alt="Papi" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Papi a la Orden</h3>
+              <p>Now or never</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Elections 2025</h4>
+              <p>"Papi a la Orden" claims to be the favorite for the presidency of the Republic of Honduras.</p>
+              <p>"We will beat them with 1,600,000 votes," Nasry Asfura said ahead of the elections.</p>
+              <p>There is much to consider about Nasry, who has been seen by many as a worn figure linked to corruption, yet he remains the National Party's main bet.</p>
+              <p>Oswaldo Ramos, candidate for deputy from the National Party, insists Nasry is the man Honduras needs.</p>
+              <p>The elections will be held on November 30 — the question is: how strong a candidate is "Papi a la Orden"?</p>
+              <p>All about the 2025 elections: https://www.eleccioneshonduras.hn/</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/mel.jpg" alt="Mel" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Half for the Commander</h3>
+              <p>Corruption and public reactions</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Carlos Zelaya and the Narcos</h4>
+              <p>A controversy erupted over a video involving Carlos Zelaya Rosales, brother of former Honduran president Manuel Zelaya.</p>
+              <p>Details surfaced of a recording in which Honduran drug traffickers discuss payments to politicians. The footage appears to show Carlos Zelaya accepting an offer of $650,000.</p>
+              <p>The video, captured by a spy camera on a wristwatch, shows Zelaya apparently calm as his interlocutors provide details.</p>
+              <p>Zelaya is heard asking the traffickers to specify the date and location for delivering the $650,000 they previously offered for a political campaign he was coordinating.</p>
+              <p>"Look, half for the commander, the rest we'll share between Santa Barbara, Olancho, Santa Barbara and Colón," Carlos Zelaya says in the recording.</p>
+              <p>There is no proof the money actually reached politicians' hands, but the video raises serious questions about Honduran politics.</p>
+              <p>Carlos Zelaya video - https://www.youtube.com/watch?v=isK0QFHOQuk</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/pedri.jpg" alt="Pedri" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Controversy after controversy</h3>
+              <p>Fair ranking?</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Lots of controversy at the Ballon d'Or ceremony</h4>
+              <p>On September 22 the Ballon d'Or ceremony took place in France, generating a lot of controversy — not so much about the winner but about the positions where standout players finished.</p>
+              <p>The debate started with Lewandowski and Vinícius, with the Brazilian surprisingly ranking above Lewandowski despite the latter scoring 42 goals and winning a domestic treble.</p>
+              <p>One of the most surprising placements was Pedri at 11th — many think this is too low for what he showed during the season, finishing behind players like Cole Palmer.</p>
+              <p>Many fans were also shocked to see Rafinha in 5th place; some felt he even deserved to win the Ballon d'Or.</p>
+              <p>In the women's game, Aitana Bonmatí won the Ballon d'Or, marking her third time achieving the honor.</p>
+              <p>Lamine Yamal again won the Kopa Trophy; Donnarumma took the Yashin Award; PSG was named best club and Luis Enrique best coach of the year.</p>
+              <p>Vitinha 3rd - Lamine Yamal 2nd - Ousmane Dembélé 1st</p>
+              <p>Best moments from the Ballon d'Or - https://www.youtube.com/watch?v=59VjdEIOnoQ</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/taylor.png" alt="Taylor" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Taylor Swift and Travis Kelce</h3>
+              <p>Updates about their relationship</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Taylor Swift announces her wedding</h4>
+              <p>The singer and the NFL player, together since 2023, have shared the news of their engagement with millions of followers on Instagram.</p>
+              <p>This August has been big for Taylor Swift: on August 12 she announced a new album and later discussed "The Life of a Showgirl" on her boyfriend Travis Kelce's podcast. On August 26 she revealed her engagement to Kelce.</p>
+              <p>Their relationship began in July 2023 after Kelce attended a Swift concert at Arrowhead Stadium. Months later, Swift made a surprise appearance at a Chiefs game, fueling dating rumors.</p>
+              <p>The engagement post included a carousel of photos of the proposal — Kelce kneeling in a garden, the couple embracing, and a close-up of the ring — and quickly gained millions of likes.</p>
+              <p>According to People magazine, Kelce proposed with a ring designed by Kindred Lubeck of Artifex Fine Jewelry.</p>
+              <p>Official Taylor Swift channel: https://www.youtube.com/@TaylorSwift</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="Football" class="container" style="display:none">
+        <h2 class="section-title">Football</h2>
+        <div class="grid">
+          <article class="card">
+            <img src="imagenescerru/ligaa.jpg" alt="LaLiga" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>LaLiga EA Sports</h3>
+              <p>Standings and more...</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>************</h4>
+              <p>*******</p>
+              <p>********</p>
+              <p>**********************</p>
+              <p>***************</p>
+              <p>LaLiga EA Sports standings - https://espndeportes.espn.com/futbol/posiciones/_/liga/esp.1 </p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/juli.jpg" alt="Julián Álvarez" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Julián Álvarez shines</h3>
+              <p>Atletico de Madrid thrashing</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Atletico de Madrid 5-2 Real Madrid</h4>
+              <p>Fantastic match in Spain's capital between Atletico de Madrid and Real Madrid where Cholo Simeone's team came out victorious.</p>
+              <p>Atletico scored first; Real Madrid reacted with goals from Mbappé and Arda Güler, and later Sorloth equalized.</p>
+              <p>In the second half, Julián Álvarez scored twice to put his side ahead.</p>
+              <p>Griezmann's goal at 90+3 finished off the Merengue team.</p>
+              <p>LaLiga EA Sports highlights: https://www.youtube.com/watch?v=BpHPcqiKwps</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/champions.jpg" alt="Champions League" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>UEFA Champions League</h3>
+              <p>Current standings</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Latest news on the Champions League</h4>
+              <p>Intense Champions League matchday left Bayern München as partial leader of the league phase.</p>
+              <p>Among the most notable games: Kairat 0-5 Real Madrid with a hat-trick from Mbappé; Chelsea beat Benfica by the minimum; Galatasaray shocked Liverpool with a 1-0 win.</p>
+              <p>Atletico de Madrid continued their run with a 5-1 victory over Frankfurt, while Athletic Bilbao's poor form continued with a 4-1 defeat against Borussia Dortmund.</p>
+              <p>Monaco and Manchester City ended in a 2-2 draw, same result for Juventus vs Villarreal.</p>
+              <p>Barcelona did not fare well, losing at home against reigning champions PSG 1-2.</p>
+              <p>It was a great Champions League round that leaves us excited for Matchday 3.</p>
+              <p>All about the Champions League - https://es.uefa.com/uefachampionsleague/</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/honduras.jpg" alt="Honduras" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>National Team roster revealed</h3>
+              <p>Call-ups, schedule, and more...</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Honduras National Team</h4>
+              <p>Reinaldo Rueda announced this Thursday the official call-up list for Honduras for the decisive 2026 World Cup qualifying matches against Costa Rica and Haiti on October 9 and 13.</p>
+              <p>The "Bicolor" will play on the 9th against Costa Rica at Estadio Morazán in San Pedro Sula (8:00 PM) and then against Haiti at Estadio Nacional in Tegucigalpa (6:00 PM).</p>
+              <p>Despite his poor form at Santos Laguna, Antony 'Choco' Lozano is still included in the squad. He has yet to score after six Liga MX matches and was recently sent off for a harsh foul on Sergio Ramos.</p>
+              <p>Coach Rueda continues to back Lozano, highlighting his consistency with the national team throughout the process.</p>
+              <p>Honduras leads Group C with four points after drawing with Haiti (0-0) and beating Nicaragua (2-0).</p>
+              <p><strong>Call-up list:</strong></p>
+              <p>Goalkeepers: Edrick Menjívar (Olimpia), Luis López (Real España), Luis Ortiz (Motagua)</p>
+              <p>Defenders: Getsel Montes (Herediano), Joseph Rosales (Minnesota), Andy Nájar (Nashville), Luis Vega (Motagua), Marcelo Santos (Motagua), Cristopher Meléndez (Motagua), Luis Crisanto (Motagua), Franklin Flores (Real España)</p>
+              <p>Midfielders: Deiby Flores (Al Najma), Kervin Arriaga (Levante), Rigo Rivas (Kocaelispor), Carlos Pineda (Sporting FC), Jorge Álvarez (Olimpia), José Pinto (Olimpia), Denis Meléndez (Motagua), Raúl García (Lobos UPN), Alex López (Olancho FC), Deyron Martínez (Olancho FC), Alexy Vega (Marathón), Leonardo Posadas García (Hamburg SV II)</p>
+              <p>Forwards: Antony Lozano (Santos Laguna), Romell Quioto (Al Najma), Luis Palma (Lech Poznań), Jorge Benguché (Olimpia), Yustin Arboleda (Olimpia), Nayrobi Vargas (Mainz 05 II), Dixon Ramírez (Real España)</p>
+              <p>A win against Costa Rica would bring Honduras closer to qualifying for their fourth World Cup.</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/pedri.jpg" alt="Pedri" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Controversy after controversy</h3>
+              <p>Fair ranking?</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Lots of controversy at the Ballon d'Or ceremony</h4>
+              <p>On September 22 the Ballon d'Or ceremony took place in France, generating a lot of controversy — not so much about the winner but about the positions where standout players finished.</p>
+              <p>The debate started with Lewandowski and Vinícius, with the Brazilian surprisingly ranking above Lewandowski despite the latter scoring 42 goals and winning a domestic treble.</p>
+              <p>One of the most surprising placements was Pedri at 11th — many think this is too low for what he showed during the season, finishing behind players like Cole Palmer.</p>
+              <p>Many fans were also shocked to see Rafinha in 5th place; some felt he even deserved to win the Ballon d'Or.</p>
+              <p>In the women's game, Aitana Bonmatí won the Ballon d'Or, marking her third time achieving the honor.</p>
+              <p>Lamine Yamal again won the Kopa Trophy; Donnarumma took the Yashin Award; PSG was named best club and Luis Enrique best coach of the year.</p>
+              <p>Vitinha 3rd - Lamine Yamal 2nd - Ousmane Dembélé 1st</p>
+              <p>Best moments from the Ballon d'Or - https://www.youtube.com/watch?v=59VjdEIOnoQ</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/Premier-League-logo.png" alt="Premier League" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Premier League</h3>
+              <p>Standings and more...</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Big games in the Premier League</h4>
+              <p>Match between Chelsea and Liverpool ended with victory for ****</p>
+              <p>****</p>
+              <p>****</p>
+              <p>***</p>
+              <p>All about the Premier League - https://www.premierleague.com/en/ </p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="Technology" class="container" style="display:none">
+        <h2 class="section-title">Technology</h2>
+        <div class="grid">
+          <article class="card">
+            <img src="imagenescerru/tecno1.jpeg" alt="Salonica" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Salonica</h3>
+              <p>The impact of technology on religions and society</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Great impact of technology</h4>
+              <p>Faith and freedom, body and finitude are some of the topics discussed in the most recent sessions of the second international congress of the magazine *Theologia*, organized by the Orthodox Church of Greece, which concludes today. An open debate between theologians and scholars to outline the challenges of the digital age.</p>
+              <p>The lens to observe the digital dimension has always been theological, without forgetting, however, to outline the challenges that this dimension imposes on the present. Challenges that other religions must also face, as highlighted by Michalis Marioras, professor at the National and Kapodistrian University of Athens (Nkua), in his intervention on the Muslim faith and the limits of artificial intelligence. Marioras explained the position of Islam, which, when allowing or prohibiting something, uses as a reference the *maslah*, a concept in Sharia law that relates to public interest or community welfare. Chrysostomos (Savvatos), Metropolitan of Messenia and professor at Nkua University, drew attention to the patristic response to the surrounding world and warned of the danger technology represents to human freedom. “Freedom is a substantial concept for man,” he told Vatican media, “because it determines good or bad relations with God and the environment. For my will to be just it must be aligned with God’s freedom, according to the theology of the Fathers.” Technology, on the other hand, comes to “occupy” man, in some way controlling him, influencing his freedom to act and relate to the world.</p>
+              <p>The arrival of this new technological era represents a change in the anthropological system, reflected in society on different levels. The algorithms that regulate social media platforms or search engines also impact democracy, and this is where governance comes into play. States and political power, however, have no role in this process. This was stated to Vatican media by Evangelos Venizelos, professor of Constitutional Law at Aristotle University of Thessaloniki: “The big problem is that technology transcends state borders, transcends international law, transcends the competences of international organizations, so in reality it shapes a universe of its own, outside political and democratic control.”</p>
+              <p>At the Salonica congress, professor Lemma gave a lecture on “Body, dependence and finitude in the digital age.”</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/tecno2.jpg" alt="Kodigo" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Kodigo</h3>
+              <p>The first AI-first tech academy in the region</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Kodigo and its big leap</h4>
+              <p>The creative technology academy Kodigo launched “Unlock Opportunities with AI by Kodigo,” positioning itself as the first AI-first academy in El Salvador and Central America.</p>
+              <p>Between 2025 and 2030, more than 10,000 people are expected to receive training in artificial intelligence through these programs, opening opportunities both for job seekers and for those who want to update their professional skills.</p>
+              <p>“In the last 6 years we have graduated 3,000 people in digital skills. By positioning ourselves as the first AI-First academy in the region, we follow the example of internationally recognized institutions, showing that El Salvador can also lead in advanced tech education,” added Ricardo Chávez, Executive Director of Kodigo.</p>
+              <p>With this initiative, Kodigo reaffirms its commitment to democratize access to tech education, strengthen employability, and prepare Salvadoran talent to compete in an increasingly AI-driven global economy.</p>
+              <p>Kodigo - https://kodigo.org/</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/tecno3.webp" alt="Myopia" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>More tech advances</h3>
+              <p>Helps childhood myopia</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Technology to control childhood myopia progression</h4>
+              <p>Myopia, also known as nearsightedness, has become a growing eye health problem, especially among children.</p>
+              <p>The prevalence of this condition has drastically increased in recent decades, prompting the scientific and medical community to seek effective ways to manage it. The projected prevalence of myopia by 2050 is alarming.</p>
+              <p>One of the main objections to any new treatment is its effectiveness. However, several studies have shown that Essilor Stellest lenses are effective in controlling the progression of myopia in children.</p>
+              <p>These lenses have been developed after years of research and solid studies. An article in *Clinical & Experimental Optometry* indicates that the technology behind these lenses is based on proven optical principles and has been adopted by many professionals worldwide, who have endorsed its effectiveness and safety.</p>
+              <p>Despite objections related to effectiveness, safety, cost, skepticism of innovation, and acceptance, scientific evidence suggests that these lenses are a valid and effective option for managing myopia progression. It is crucial that parents and health professionals evaluate these considerations and become adequately informed about the potential benefits. In a world where myopia continues to rise, technological advances make a difference.</p>
+              <p>More info on childhood myopia and technology - https://fernandez-velazquez.com/control-de-la-miopia-en-ninos/ </p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="Music" class="container" style="display:none">
+        <h2 class="section-title">Music</h2>
+        <div class="grid">
+          <article class="card">
+            <img src="imagenescerru/mon laferte.jpg" alt="Mon Laferte" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Mon Laferte announces album</h3>
+              <p>Release date and tracks</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Femme Fatale</h4>
+              <p>The Chilean singer has announced a new album to be released on October 28, titled <em>Femme Fatale</em>.</p>
+              <p>Mon Laferte has already previewed several songs that will be on the album such as "Otra Noche de Llorar", "Esto es Amor" (with Conociendo Rusia) and "La Tirana" (with Nathy Peluso). The album will feature collaborations with artists like Tiago Iorc, Natalia Lafourcade and Silvana Estrada.</p>
+              <p>There is great expectation around this release, with one of the songs already nominated for the Latin Grammy Awards.</p>
+              <p>Otra Noche de Llorar - https://www.youtube.com/watch?v=Z8DcUVribEg</p>
+              <p>Esto Es Amor - https://www.youtube.com/watch?v=f1ExcuCf7HI</p>
+              <p>La Tirana - https://www.youtube.com/watch?v=SZlMeMi-e5s</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/music.jpeg" alt="Latin Grammy Awards" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Latin Grammy Awards</h3>
+              <p>Date, schedules, and more...</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Latin Grammy Awards</h4>
+              <p>The 25th Annual Latin GRAMMY Awards will be held in Miami, Florida, on November 14, 2024. The Latin Recording Academy is preparing, including the next selection of the "Leading Ladies of Entertainment" for 2025 and the opening of the press accreditation process for the 2024 event.</p>
+              <p>The 2025 Latin GRAMMY Awards will take place at the Kaseya Center in Miami, on Thursday, November 14.</p>
+              <p>It was announced that the "Leading Ladies of Entertainment 2025" will be honored at the upcoming ceremony.</p>
+              <p>Press Accreditation: The application process for press credentials for the 26th edition is open until October 6, 2024, to access live and virtual events.</p>
+              <p>More about the Latin GRAMMYs - https://www.latingrammy.com/</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/taylor.png" alt="Taylor Swift" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Taylor Swift and Travis Kelce</h3>
+              <p>Updates about their relationship</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Taylor Swift announces her wedding</h4>
+              <p>The singer and the NFL player, together since 2023, shared their engagement news with millions of followers on Instagram.</p>
+              <p>This August has been big for Taylor Swift: on August 12 she announced a new album and later discussed "The Life of a Showgirl" on her boyfriend Travis Kelce's podcast. On August 26 she revealed her engagement to Kelce.</p>
+              <p>Their relationship began in July 2023 after Kelce attended a Swift concert at Arrowhead Stadium. Months later, Swift made a surprise appearance at a Chiefs game, fueling dating rumors.</p>
+              <p>The engagement post included a carousel of photos of the proposal — Kelce kneeling in a garden, the couple embracing, and a close-up of the ring — and quickly gained millions of likes.</p>
+              <p>According to People magazine, Kelce proposed with a ring designed by Kindred Lubeck of Artifex Fine Jewelry.</p>
+              <p>Official Taylor Swift channel: https://www.youtube.com/@TaylorSwift</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="Culture" class="container" style="display:none">
+        <h2 class="section-title">Culture</h2>
+        <div class="grid">
+          <article class="card">
+            <img src="imagenescerru/cultur.jpg" alt="Muysca" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>The Muysca Language</h3>
+              <p>Language revival in Colombia</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>The Muysca language revives in Colombia</h4>
+              <p>For years, the Muysca language was considered extinct, disappearing due to colonial processes and assimilation policies. But today, it is being reborn thanks to the joint efforts of indigenous communities, researchers, and young activists in Bogotá and its surroundings.</p>
+              <p>In the Indigenous Council of Suba, Muysca classes are offered to children, youth, and adults through community workshops, language games, and participatory methods. A digital platform, Subacubun.com, has also been created to spread the language and facilitate virtual learning.</p>
+              <p>The recovery of Muysca not only means rebuilding vocabulary or grammar, but also rescuing identity, collective memory, and the worldview of a historically invisibilized people. Furthermore, the process promotes local cultural empowerment, affirming that each language is its own symbolic universe.</p>
+              <p>This Latin American phenomenon inspires other linguistic revitalization initiatives in the region, showing that “dead” languages can come back to life when communities decide to and institutional support joins in.</p>
+              <p>More information about the Muysca language - https://en.wikipedia.org/wiki/Muisca_language</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/cultura.jpg" alt="Navarra Fair" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Editorial Fair in Navarra</h3>
+              <p>Independent books resist</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Publishing Fair 2025</h4>
+              <p>From October 1st to 5th, 2025, the ninth edition of the Publishing Fair (Navarra) will be held in Pamplona, under the motto of highlighting the editorial profession against dominant commercial trends.</p>
+              <p>The event includes presentations of local works such as Navarra: Myths and Legends and 73 Days, creative workshops, activities for children, round tables, and spaces for independent publishers.</p>
+              <p>The president of the Editargi association, Aritz Otazu, emphasized the urgency of “instilling the reading habit from childhood” and protecting small publishers against the large groups of the publishing market.</p>
+              <p>The fair demonstrates that, despite economic challenges and media concentration, there are spaces of cultural resistance for local, alternative, and committed publishing.</p>
+              <p>More information about the Fair - https://www.kulturklik.euskadi.eus/evento/2025/10/01/feria-de-la-edicion-de-navarra-2025/webkklik00-detalle/es/</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/cultu.jpg" alt="Awajun ceramics" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Awajún Ceramic Artists Resist</h3>
+              <p>Women defend their ancestral art</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Ancestral Art in Peru</h4>
+              <p>In the Peruvian Amazon, specifically in the Cenepa River basin, women of the Awajún ethnic group are leading a cultural struggle against the threat of illegal mining that has contaminated their territories.</p>
+              <p>These traditional artists have turned ceramic production into an act of resistance and preservation of their collective memory. For decades, they have passed down ancestral techniques from generation to generation. In the last 20 years, they created eight pottery schools to teach these skills to girls and young women.</p>
+              <p>However, they face difficulties: mercury contamination , scarcity of quality clay, and little institutional support limit their work. In addition, they denounce that illegal mining has generated severe social and environmental impacts in their territories.</p>
+              <p>This case is a clear example of how culture is not only art or tradition, but also territorial resistance. The Awajún ceramists symbolize the urgency of protecting not only material heritage, but also the lives, ecosystems, and knowledge of indigenous peoples.</p>
+              <p>More information about Awajún ceramics - https://en.wikipedia.org/wiki/Awaj%C3%BAn_ceramics</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="Politics" class="container" style="display:none">
+        <h2 class="section-title">Politics</h2>
+        <div class="grid">
+          <article class="card">
+            <img src="imagenescerru/juab.jpg" alt="Juan Orlando Hernández" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Juan Orlando Hernández</h3>
+              <p>A distorted memory?</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>The Former President of Honduras</h4>
+              <p>The former president of Honduras, Juan Orlando Hernández, sentenced to 45 years in prison for drug trafficking in the United States, has tried to project an image of innocence and resilience from his imprisonment, according to media reports. Recently, he shared on social media an “emotional” message in which he described his experience of running outdoors again in prison, calling it “incredible.” These types of posts, which seek to humanize his image, sharply contrast with the accusations against him and the New York court’s verdict.</p>
+              <p>On June 26, 2024, a federal court in New York sentenced Hernández to 45 years in prison for his participation in a vast drug trafficking network. The U.S. Department of Justice accused him of using his position as president to facilitate the shipment of tons of cocaine to the U.S., in conspiracy with his brother Tony Hernández and other traffickers. During the trial, prosecutors and witnesses described him as a “two-faced politician” who publicly pretended to fight drug trafficking while secretly conspiring with criminals for political and economic gain.</p>
+              <p>Hernández’s extradition in April 2022 marked a milestone in Honduras’ history. It was a moment of sharp contrasts: while his supporters cried and claimed his innocence, thousands of Hondurans saw his extradition as a chance to cleanse the “narco-state” that, according to the U.S. verdict, he helped build. Three years later, the conviction solidified the perception that the so-called “war on drugs” he promoted in Honduras was, largely, a farce.</p>
+              <p>The story of Juan Orlando Hernández reflects the challenges faced by Latin American nations in the fight against corruption and drug trafficking. The phrase “A distorted memory?” encapsulates the complexity of a figure who tried to shape his public narrative but was ultimately unmasked by U.S. justice, revealing a much darker reality than he wanted to project.</p>
+              <p>More about Juan Orlando Hernández - https://en.wikipedia.org/wiki/Juan_Orlando_Hern%C3%A1ndez</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/pol.jpg" alt="Elections Honduras" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>General Elections 2025</h3>
+              <p>Everyone must vote</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>General Elections in Honduras 2025</h4>
+              <p>The general elections in Honduras will be held on November 30, 2025. Citizens will elect a new president, 128 members of the National Congress, and 20 representatives to the Central American Parliament.</p>
+              <p>Councilor Cossette López expressed her “deep concern” about the actions of security forces inside the CNE facilities. This situation has disrupted the institution’s work during a crucial stage of the electoral calendar.</p>
+              <p>The complaint came months after the National Congress approved a special budget of more than 85 million lempiras for the Honduran Armed Forces. This budget is intended to cover the costs of guarding, transporting, and monitoring electoral materials — a task the military has traditionally overseen. The participation of the armed forces in elections has long been a topic of political debate.</p>
+              <p>As the electoral campaign enters its final stage, political tensions are rising. Major parties such as Libre, the National Party, and the Liberal Party have already defined their candidates following the March primaries. Among the presidential hopefuls are Rixi Moncada (Libre) and Salvador Nasralla, who has been an active political figure for years.</p>
+              <p>Civil society organizations and political analysts have called on authorities and political actors to guarantee transparency in the process. The international community is also paying close attention to Honduras’ political situation given its history of institutional crises. The main goal is to ensure the elections take place peacefully and reflect the will of voters, thereby strengthening Honduran democracy.</p>
+              <p>Official CNE Website - https://papeletas.cne.hn/</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/mel.jpg" alt="Carlos Zelaya" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Half for the Commander</h3>
+              <p>Corruption and public reactions</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Carlos Zelaya and the Narcos</h4>
+              <p>A controversy erupted over a video involving Carlos Zelaya Rosales, brother of former Honduran president Manuel Zelaya.</p>
+              <p>Details surfaced of a recording in which Honduran drug traffickers discuss payments to politicians. The footage appears to show Carlos Zelaya accepting an offer of $650,000.</p>
+              <p>The video, captured by a spy camera on a wristwatch, shows Zelaya apparently calm as his interlocutors provide details.</p>
+              <p>Zelaya is heard asking the traffickers to specify the date and location for delivering the $650,000 they previously offered for a political campaign he was coordinating.</p>
+              <p>“Look, half for the commander, the rest we’ll share between Santa Barbara, Olancho, and Colón,” Carlos Zelaya says in the recording.</p>
+              <p>There is no proof the money actually reached politicians, but the video raises serious questions about Honduran politics.</p>
+              <p>Carlos Zelaya video - https://www.youtube.com/watch?v=isK0QFHOQuk</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/salva.jpg" alt="Salvador Nasralla" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Salvador Nasralla</h3>
+              <p>The solution for Honduras</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Salvador Nasralla, the Savior of Honduras</h4>
+              <p>As the 2025 general elections approach, Liberal Party presidential candidate Salvador Nasralla intensifies his campaign, focused on transparency, economic development, and defending Honduran sovereignty. With a strong emphasis on economic recovery, Nasralla presents himself as an alternative to traditional parties, highlighting his commitment to progress and real solutions for the people.</p>
+              <p>In a bid to create more opportunities, Nasralla has placed special emphasis on economic development. During a campaign event in Valle, he outlined key projects including the construction of Amapala Port and the reactivation of the Nacaome dam. These initiatives, according to Nasralla, are crucial for regional growth and job creation.</p>
+              <p>Another key point in his platform is the defense of national sovereignty, particularly in the Gulf of Fonseca region. He has strongly criticized the current government for failing to protect Honduras’ territorial rights, directly affecting coastal populations. Nasralla has promised that under his administration, defending these rights will be a national priority.</p>
+              <p>Nasralla has adopted the slogan “Clean Hands” for his campaign, positioning himself as the only candidate free of the corruption that, he claims, has plagued recent governments. This message of honesty and transparency aims to win over disillusioned voters and restore trust in Honduran politics.</p>
+              <p>With his active presence on social media and tours across the country, Nasralla presents himself as close to the people, listening to their concerns and reaffirming his commitment to a better future for Honduras. Just months before the elections, his message of change and hope continues to gain ground.</p>
+              <p>More about Salvador Nasralla - https://en.wikipedia.org/wiki/Salvador_Nasralla</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/rixi.jpeg" alt="Rixi Moncada" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Rixi Ramona Moncada</h3>
+              <p>On the road to communism?</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Extremist Ideologies?</h4>
+              <p>The campaign of Libre Party candidate Rixi Moncada has been marked not only by her political tour but also by strong criticism from the opposition linking her to extremist ideologies and accusations of dishonesty.</p>
+              <p>The main criticism surrounding Moncada and her party is the alleged leaning toward communism. Opponents, such as Salvador Nasralla’s party, have labeled her a “communist puppet” and accused her of wanting to “give Honduras away to Venezuela.” Although Moncada promises a “fiscal, economic, and social revolution” if she wins the presidency, critics warn her policies could push the country toward radical socialism, limiting free enterprise and affecting the economy.</p>
+              <p>Other critics view her as the “chosen heir of the Zelaya-Castro family to inherit the presidential throne.” They argue her candidacy is a maneuver to ensure continuity of the current political project rather than real change in power.</p>
+              <p>Moncada has also faced accusations of using state media for her political propaganda. In September 2025, the media outlet Contracorriente Honduras reported allegations of “state propaganda in favor of Rixi Moncada,” raising concerns about electoral fairness.</p>
+              <p>It’s important to note that these criticisms are part of the political debate in Honduras and are rejected by Moncada and her supporters, who instead emphasize her proposals for economic democratization, fighting corruption, and continuing current projects.</p>
+              <p>More about Rixi Ramona Moncada - https://rixi.hn/biografia/</p>
+            </div>
+          </article>
+
+          <article class="card">
+            <img src="imagenescerru/papi.jpg" alt="Nasry Asfura" onerror="this.onerror=null;this.src='placeholder.JPG'">
+            <div>
+              <h3>Papi a la Orden</h3>
+              <p>Now or never</p>
+              <button class="read">Read</button>
+            </div>
+            <div class="full-article" style="display:none">
+              <h4>Elections 2025</h4>
+              <p>“Papi a la Orden” claims to be the favorite for the Honduran presidency.</p>
+              <p>“We will beat them with 1,600,000 votes,” Nasry Asfura declared ahead of the elections.</p>
+              <p>Much is debated about Asfura, who is seen by many as a worn-out figure linked to corruption, yet he remains the National Party’s top candidate.</p>
+              <p>Oswaldo Ramos, a National Party congressional candidate, insists Asfura is the man Honduras needs.</p>
+              <p>The elections will be held on November 30 — the question is: how strong a candidate is “Papi a la Orden”?</p>
+              <p>All about the 2025 elections: https://www.eleccioneshonduras.hn/</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="Contact" class="container" style="display:none">
+        <h2 class="section-title">Contact</h2>
+        <div style="padding:16px;text-align:center;">
+          <p>Gmail - juanitmessi@gmail.com</p>
+          <p>Phone - +504 9988-7766 </p>
+          <p>Adress - New Miami, Honduras </p>
+        </div>
+      </section>
+
+      <footer><small>Breaking HN • Informing the people</small></footer>
+    </div>
+  </main>
+
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" id="modalClose" aria-label="Close">×</button>
+      <div id="modalMediaWrapper"><img id="modalImg" src="" alt=""></div>
+      <h3 id="modalTitle"></h3>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+
+    const tabs = Array.from(document.querySelectorAll('aside.sidebar .tab'));
+
+    // set up showSection using data-target -> elementId
+    function showSection(id){
+      // hide all sections that have id matching any data-target or known ids
+      const allSections = document.querySelectorAll('main .container, main section.container');
+      allSections.forEach(s => s.style.display = 'none');
+
+      const target = document.getElementById(id);
+      if(target) target.style.display = 'block';
+
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.target === id));
+    }
+
+    tabs.forEach(t => t.addEventListener('click', ()=> showSection(t.dataset.target)));
+    showSection('Home'); // initial
+
+    // Modal variables
+    const modal = document.getElementById('modal');
+    const modalImg = document.getElementById('modalImg');
+    const modalMediaWrapper = document.getElementById('modalMediaWrapper');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    const modalClose = document.getElementById('modalClose');
+
+    let lastScroll = 0;
+    let locked = false;
+
+    function transformHtmlForModal(html){
+      if(!html) return html;
+      let out = html;
+      out = out.replace(/((https?:\/\/)[^\s"<]+)/g, function(url){
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      });
+      return out;
+    }
+
+    function openModal(title, imgSrc, htmlContent, cardEl){
+      lastScroll = window.scrollY || document.documentElement.scrollTop;
+      const rect = cardEl ? cardEl.getBoundingClientRect() : {top:0};
+      const target = lastScroll + rect.top - 80;
+      window.scrollTo({ top: target, behavior: 'smooth' });
+
+      const transformed = transformHtmlForModal(htmlContent || '');
+      setTimeout(()=>{
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${target}px`;
+        document.body.classList.add('modal-open');
+        locked = true;
+
+        modalMediaWrapper.innerHTML = '';
+        modalMediaWrapper.style.display = 'block';
+        modalImg.src = imgSrc || 'placeholder.JPG';
+        modalImg.alt = title || '';
+        modalBody.innerHTML = transformed || '<p>No additional content.</p>';
+
+        modalTitle.textContent = title || 'Article';
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden','false');
+        modalClose.focus();
+      }, 300);
+    }
+
+    function closeModal(){
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden','true');
+
+      if(locked){
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.classList.remove('modal-open');
+        locked = false;
+        window.scrollTo(0, lastScroll);
+      }
+    }
+
+    document.addEventListener('click', function(e){
+      const target = e.target;
+      if(target.classList && target.classList.contains('read')){
+        const card = target.closest('.card');
+        if(!card) return;
+        const large = card.dataset.large || (card.querySelector('img') ? card.querySelector('img').src : 'placeholder.JPG');
+        const titleEl = card.querySelector('h3, h2');
+        const title = titleEl ? titleEl.textContent : 'Article';
+        const fullBlock = card.querySelector('.full-article');
+        const fullHtml = fullBlock ? fullBlock.innerHTML : '<p>No full content available.</p>';
+        openModal(title, large, fullHtml, card);
+        return;
+      }
+
+      if(target === modalClose) { closeModal(); return; }
+      if(target === modal) { closeModal(); return; }
+    });
+
+    window.addEventListener('keydown', (e)=> { if(e.key === 'Escape') closeModal(); });
+
+    // fallback image handling
+    document.querySelectorAll('img').forEach(img=>{
+      img.addEventListener('error', function(){
+        if(!this.dataset.failed){
+          this.dataset.failed = '1';
+          this.src = 'placeholder.JPG';
+        }
+      });
+    });
+
+  });
+  </script>
+
+</body>
+</html>
